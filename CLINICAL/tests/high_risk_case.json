@@ -1,0 +1,8 @@
+{
+  "fever": true,
+  "fever_duration_days": 8,
+  "high_malaria_risk_area": true,
+  "unconscious_or_lethargic": false,
+  "unable_to_drink": false,
+  "repeated_vomiting": false
+}

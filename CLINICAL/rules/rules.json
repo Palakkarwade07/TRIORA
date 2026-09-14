@@ -1,0 +1,55 @@
+{
+  "protocol": "Malaria Assessment",
+  "red_flags": [
+    {
+      "id": "RF001",
+      "field": "unconscious_or_lethargic",
+      "value": true,
+      "message": "Patient is unconscious or abnormally lethargic."
+    },
+    {
+      "id": "RF002",
+      "field": "unable_to_drink",
+      "value": true,
+      "message": "Patient is unable to drink or feed."
+    },
+    {
+      "id": "RF003",
+      "field": "repeated_vomiting",
+      "value": true,
+      "message": "Patient exhibits persistent or repeated vomiting."
+    }
+  ],
+  "rules": [
+    {
+      "id": "R001",
+      "conditions": {
+        "fever": true,
+        "high_malaria_risk_area": true
+      },
+      "risk_level": "HIGH",
+      "referral_required": true,
+      "explanation": "Fever present in a high-risk malaria region."
+    },
+    {
+      "id": "R002",
+      "conditions": {
+        "fever": true,
+        "fever_duration_days": 7
+      },
+      "risk_level": "HIGH",
+      "referral_required": true,
+      "explanation": "Fever persisting for 7 or more days."
+    },
+    {
+      "id": "R003",
+      "conditions": {
+        "fever": true,
+        "high_malaria_risk_area": false
+      },
+      "risk_level": "MODERATE",
+      "referral_required": false,
+      "explanation": "Fever present in a low-risk malaria region."
+    }
+  ]
+}
