@@ -137,7 +137,40 @@ class TestEnginePipeline(unittest.TestCase):
 
         # Cleanup temporary test files
         os.remove(json_file)
-        os.remove(csv_file)        
+        os.remove(csv_file)  
+
+
+    def test_full_system_integration(self):
+        from STORAGE.db_manager import get_patient_history, get_clinical_summary
+        from STORAGE.exporter import export_assessments_to_json, export_assessments_to_csv
+
+        patient = {
+            "patient_id": "E2E-TEST-99",
+            "age_months": 14,
+            "fever_duration_days": 8,
+            "has_danger_signs": True,
+        }
+        # 1. Process Intake
+        res = process_patient_intake(patient, self.rules_config)
+        self.assertEqual(res["risk_level"], "HIGH")
+
+        # 2. Query History
+        hist = get_patient_history("E2E-TEST-99")
+        self.assertEqual(len(hist), 1)
+
+        # 3. Check Metrics Summary
+        summary = get_clinical_summary()
+        self.assertGreater(summary["total_assessments"], 0)
+
+        # 4. Export Verification
+        j_cnt = export_assessments_to_json("e2e_export.json")
+        c_cnt = export_assessments_to_csv("e2e_export.csv")
+        self.assertGreater(j_cnt, 0)
+        self.assertGreater(c_cnt, 0)
+
+        import os
+        os.remove("e2e_export.json")
+        os.remove("e2e_export.csv")          
 
 
 if __name__ == "__main__":
