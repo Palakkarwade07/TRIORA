@@ -1,6 +1,6 @@
 import sqlite3
 import unittest
-from engine_pipeline import process_patient_intake
+from engine_pipeline import process_patient_intake, process_batch_intake
 
 
 class TestEnginePipeline(unittest.TestCase):
@@ -68,6 +68,32 @@ class TestEnginePipeline(unittest.TestCase):
         result = process_patient_intake(patient, self.rules_config)
         self.assertEqual(result["risk_level"], "LOW")
         self.assertFalse(result["referral_required"])
+
+    def test_batch_patient_processing(self):
+        patients = [
+            {
+                "patient_id": "BATCH-01",
+                "age_months": 10,
+                "fever_duration_days": 1,
+                "has_danger_signs": False,
+            },
+            {
+                "patient_id": "BATCH-02",
+                "age_months": 36,
+                "fever_duration_days": 8,
+                "has_danger_signs": True,
+            },
+        ]
+        results = process_batch_intake(patients, self.rules_config)
+        self.assertEqual(len(results), 2)
+
+        # Verify persistence in DB
+        conn = sqlite3.connect("TRIORA.db")
+        count = conn.execute(
+            "SELECT COUNT(*) FROM patients WHERE patient_id LIKE 'BATCH-%'"
+        ).fetchone()[0]
+        conn.close()
+        self.assertEqual(count, 2)
 
 
 if __name__ == "__main__":
