@@ -2,6 +2,7 @@ import sqlite3
 import unittest
 from engine_pipeline import process_patient_intake, process_batch_intake
 from STORAGE.db_manager import get_patient_history, get_clinical_summary
+from CLINICAL.validators import PatientValidationError
 
 
 class TestEnginePipeline(unittest.TestCase):
@@ -107,6 +108,16 @@ class TestEnginePipeline(unittest.TestCase):
         self.assertIn("total_patients", summary)
         self.assertIn("risk_breakdown", summary)
         self.assertTrue(summary["total_assessments"] > 0)
+
+    def test_validation_missing_required_field(self):
+        invalid_patient = {"age_months": 12}  # Missing patient_id
+        with self.assertRaises(PatientValidationError):
+            process_patient_intake(invalid_patient, self.rules_config)
+
+    def test_validation_invalid_data_type(self):
+        invalid_patient = {"patient_id": "TEST-ERR", "age_months": -5}  # Invalid negative age
+        with self.assertRaises(PatientValidationError):
+            process_patient_intake(invalid_patient, self.rules_config)
 
 
 if __name__ == "__main__":
