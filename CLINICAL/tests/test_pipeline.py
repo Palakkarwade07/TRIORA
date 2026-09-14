@@ -120,5 +120,25 @@ class TestEnginePipeline(unittest.TestCase):
             process_patient_intake(invalid_patient, self.rules_config)
 
 
+    def test_json_and_csv_exporters(self):
+        import os
+        from STORAGE.exporter import export_assessments_to_json, export_assessments_to_csv
+
+        json_file = "test_export.json"
+        csv_file = "test_export.csv"
+
+        json_count = export_assessments_to_json(json_file)
+        csv_count = export_assessments_to_csv(csv_file)
+
+        self.assertTrue(os.path.exists(json_file))
+        self.assertTrue(os.path.exists(csv_file))
+        self.assertTrue(json_count > 0)
+        self.assertTrue(csv_count > 0)
+
+        # Cleanup temporary test files
+        os.remove(json_file)
+        os.remove(csv_file)        
+
+
 if __name__ == "__main__":
     unittest.main()
