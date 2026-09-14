@@ -28,7 +28,16 @@ def save_assessment(patient_data, assessment_result):
         ),
     )
 
+    # Safely extract values regardless of minor key mismatches
+    risk_level = assessment_result.get("risk_level") or assessment_result.get(
+        "risk", "UNKNOWN"
+    )
+    needs_referral = assessment_result.get(
+        "needs_referral", assessment_result.get("referral_required", False)
+    )
+
     # Insert assessment outcome
+   # Insert assessment outcome
     cursor.execute(
         """
         INSERT OR REPLACE INTO assessments (assessment_id, patient_id, risk_level, needs_referral, applied_rules)
@@ -37,9 +46,17 @@ def save_assessment(patient_data, assessment_result):
         (
             assessment_result["assessment_id"],
             patient_data["patient_id"],
-            assessment_result["risk_level"],
-            assessment_result["needs_referral"],
-            json.dumps(assessment_result.get("applied_rules", [])),
+            risk_level,
+            needs_referral,
+            json.dumps(
+                assessment_result.get(
+                    "applied_rules",
+                    assessment_result.get(
+                        "triggered_rules",
+                        assessment_result.get("rules_triggered", []),
+                    ),
+                )
+            ),
         ),
     )
 
