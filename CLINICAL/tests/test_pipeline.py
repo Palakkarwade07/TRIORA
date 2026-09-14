@@ -1,6 +1,7 @@
 import sqlite3
 import unittest
 from engine_pipeline import process_patient_intake, process_batch_intake
+from STORAGE.db_manager import get_patient_history, get_clinical_summary
 
 
 class TestEnginePipeline(unittest.TestCase):
@@ -32,10 +33,10 @@ class TestEnginePipeline(unittest.TestCase):
         }
         result = process_patient_intake(patient, self.rules_config)
 
-        # 1. Assert memory result
+        # Assert memory result
         self.assertEqual(result["risk_level"], "HIGH")
 
-        # 2. Assert database record
+        # Assert database record
         conn = sqlite3.connect("TRIORA.db")
         row = conn.execute(
             "SELECT risk_level, needs_referral FROM assessments WHERE patient_id='TEST-P01'"
@@ -94,6 +95,18 @@ class TestEnginePipeline(unittest.TestCase):
         ).fetchone()[0]
         conn.close()
         self.assertEqual(count, 2)
+
+    def test_query_utilities_and_summary(self):
+        # Test fetching history for an existing test patient
+        history = get_patient_history("TEST-P01")
+        self.assertTrue(len(history) > 0)
+        self.assertEqual(history[0]["risk_level"], "HIGH")
+
+        # Test clinical metrics summary calculation
+        summary = get_clinical_summary()
+        self.assertIn("total_patients", summary)
+        self.assertIn("risk_breakdown", summary)
+        self.assertTrue(summary["total_assessments"] > 0)
 
 
 if __name__ == "__main__":
