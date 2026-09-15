@@ -1,12 +1,14 @@
 // lib/ai/bayesian/bayesian_node.dart
 
+import 'probability_source.dart';
+
 class BayesianNode {
   final String id;
   final List<String> states;
   final List<String> parentIds;
   
-  // Conditional Probability Table: Map<ParentKey, Map<State, Probability>>
-  final Map<String, Map<String, double>> cpt;
+  // Mapping: ParentKey -> (State -> ProbabilityMetadata)
+  final Map<String, Map<String, ProbabilityMetadata>> cpt;
 
   BayesianNode({
     required this.id,
