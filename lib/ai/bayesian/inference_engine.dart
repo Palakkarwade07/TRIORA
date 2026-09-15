@@ -1,6 +1,7 @@
 // lib/ai/bayesian/inference_engine.dart
 
-import 'bayesian_node.dart';
+// ignore: unused_import
+import "bayesian_node.dart";
 import 'bayesian_network.dart';
 
 class DynamicInferenceEngine {
