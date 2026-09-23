@@ -1,49 +1,48 @@
-class Tables {
+class DatabaseTables {
+  // Table: Patients
   static const String tablePatients = 'patients';
-  static const String tableAssessments = 'assessments';
-
-  // Columns: patients
-  static const String colPatientId = 'patient_id';
-  static const String colIdentifier = 'identifier';
-  static const String colAge = 'age';
-  static const String colSex = 'sex';
-  static const String colCreatedAt = 'created_at';
-  static const String colUpdatedAt = 'updated_at';
-
-  // Columns: assessments
-  static const String colAssessmentId = 'assessment_id';
-  static const String colAssessmentPatientId = 'patient_id';
-  static const String colAssessmentDate = 'assessment_date';
-  static const String colInputData = 'input_data';
-  static const String colRiskLevel = 'risk_level';
-  static const String colConfidence = 'confidence';
-  static const String colReferral = 'referral';
-  static const String colExplanation = 'explanation';
-
-  // DDL: Create Patients Table
   static const String createPatientsTable = '''
     CREATE TABLE $tablePatients (
-      $colPatientId TEXT PRIMARY KEY,
-      $colIdentifier TEXT NOT NULL,
-      $colAge INTEGER NOT NULL,
-      $colSex TEXT NOT NULL,
-      $colCreatedAt TEXT NOT NULL,
-      $colUpdatedAt TEXT NOT NULL
+      id TEXT PRIMARY KEY,
+      identifier TEXT NOT NULL UNIQUE,
+      age INTEGER NOT NULL,
+      sex TEXT NOT NULL,
+      created_at TEXT NOT NULL
     );
   ''';
 
-  // DDL: Create Assessments Table
+  // Table: Assessments
+  static const String tableAssessments = 'assessments';
   static const String createAssessmentsTable = '''
     CREATE TABLE $tableAssessments (
-      $colAssessmentId TEXT PRIMARY KEY,
-      $colAssessmentPatientId TEXT NOT NULL,
-      $colAssessmentDate TEXT NOT NULL,
-      $colInputData TEXT NOT NULL,
-      $colRiskLevel TEXT NOT NULL,
-      $colConfidence REAL NOT NULL,
-      $colReferral TEXT NOT NULL,
-      $colExplanation TEXT NOT NULL,
-      FOREIGN KEY ($colAssessmentPatientId) REFERENCES $tablePatients ($colPatientId) ON DELETE CASCADE
+      id TEXT PRIMARY KEY,
+      patient_id TEXT NOT NULL,
+      assessment_date TEXT NOT NULL,
+      input_data TEXT NOT NULL,
+      risk_level TEXT NOT NULL,
+      confidence REAL NOT NULL,
+      referral TEXT NOT NULL,
+      explanation TEXT NOT NULL,
+      triggered_rules TEXT NOT NULL,
+      FOREIGN KEY (patient_id) REFERENCES $tablePatients (id) ON DELETE CASCADE
     );
+  ''';
+
+  // Index 1: Optimize queries looking up history by patient ID
+  static const String idxAssessmentsPatientId = '''
+    CREATE INDEX IF NOT EXISTS idx_assessments_patient_id 
+    ON $tableAssessments (patient_id);
+  ''';
+
+  // Index 2: Optimize date-based filtering and chronological sorting
+  static const String idxAssessmentsDate = '''
+    CREATE INDEX IF NOT EXISTS idx_assessments_date 
+    ON $tableAssessments (assessment_date DESC);
+  ''';
+
+  // Index 3: Optimize fast lookup on patient unique external identifier
+  static const String idxPatientsIdentifier = '''
+    CREATE INDEX IF NOT EXISTS idx_patients_identifier 
+    ON $tablePatients (identifier);
   ''';
 }
