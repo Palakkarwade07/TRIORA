@@ -2,96 +2,67 @@ import 'dart:async';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 import 'schema/tables.dart';
-import 'models/patient.dart';
 
 class DatabaseHelper {
-  static const String _databaseName = "triora.db";
-  static const int _databaseVersion = 1;
+  static const String _dbName = 'triora_clinical.db';
+  static const int _dbVersion = 2; // Incremented for Day 3 indexing migration
 
   // Singleton instance
-  DatabaseHelper._privateConstructor();
-  static final DatabaseHelper instance = DatabaseHelper._privateConstructor();
-
+  static final DatabaseHelper instance = DatabaseHelper._init();
   static Database? _database;
+
+  DatabaseHelper._init();
 
   Future<Database> get database async {
     if (_database != null) return _database!;
-    _database = await initializeDatabase();
+    _database = await _initDB(_dbName);
     return _database!;
   }
 
-  // Initialize SQLite database
-  Future<Database> initializeDatabase() async {
-    final String databasesPath = await getDatabasesPath();
-    final String path = join(databasesPath, _databaseName);
+  Future<Database> _initDB(String filePath) async {
+    final dbPath = await getDatabasesPath();
+    final path = join(dbPath, filePath);
 
     return await openDatabase(
       path,
-      version: _databaseVersion,
+      version: _dbVersion,
+      onConfigure: _onConfigure,
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
     );
   }
 
-  // Create tables on initial launch
+  /// Ensure foreign keys are strictly enforced by the SQLite runtime engine
+  Future<void> _onConfigure(Database db) async {
+    await db.execute('PRAGMA foreign_keys = ON');
+  }
+
+  /// Initial table and index provisioning
   Future<void> _onCreate(Database db, int version) async {
-    await db.execute(Tables.createPatientsTable);
-    await db.execute(Tables.createAssessmentsTable);
+    await db.execute(DatabaseTables.createPatientsTable);
+    await db.execute(DatabaseTables.createAssessmentsTable);
+
+    // Apply indexes
+    await db.execute(DatabaseTables.idxAssessmentsPatientId);
+    await db.execute(DatabaseTables.idxAssessmentsDate);
+    await db.execute(DatabaseTables.idxPatientsIdentifier);
   }
 
-  // Close the database connection
-  Future<void> close() async {
-    final Database db = await database;
-    db.close();
-  }
-
-  // ==========================================
-  // PATIENT CRUD OPERATIONS (Create, Read, Update)
-  // ==========================================
-
-  // Create / Insert a new patient
-  Future<int> insertPatient(Patient patient) async {
-    final Database db = await database;
-    return await db.insert(
-      Tables.tablePatients,
-      patient.toMap(),
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
-  }
-
-  // Read: Fetch a single patient by their ID
-  Future<Patient?> getPatient(String patientId) async {
-    final Database db = await database;
-    final List<Map<String, dynamic>> maps = await db.query(
-      Tables.tablePatients,
-      where: '${Tables.colPatientId} = ?',
-      whereArgs: [patientId],
-    );
-
-    if (maps.isNotEmpty) {
-      return Patient.fromMap(maps.first);
+  /// Schema migration path when moving between versions without data loss
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      // Version 1 -> Version 2: Add performance lookup indexes
+      await db.execute(DatabaseTables.idxAssessmentsPatientId);
+      await db.execute(DatabaseTables.idxAssessmentsDate);
+      await db.execute(DatabaseTables.idxPatientsIdentifier);
     }
-    return null;
   }
 
-  // Read: Fetch all registered patients
-  Future<List<Patient>> getPatients() async {
-    final Database db = await database;
-    final List<Map<String, dynamic>> maps = await db.query(
-      Tables.tablePatients,
-      orderBy: '${Tables.colCreatedAt} DESC',
-    );
-
-    return List.generate(maps.length, (i) => Patient.fromMap(maps[i]));
-  }
-
-  // Update an existing patient record
-  Future<int> updatePatient(Patient patient) async {
-    final Database db = await database;
-    return await db.update(
-      Tables.tablePatients,
-      patient.toMap(),
-      where: '${Tables.colPatientId} = ?',
-      whereArgs: [patient.patientId],
-    );
+  Future<void> close() async {
+    final db = _database;
+    if (db != null) {
+      await db.close();
+      _database = null;
+    }
   }
 }
