@@ -10,6 +10,49 @@ def get_connection():
     return conn
 
 
+def init_db():
+    """Initializes the SQLite database, creates tables, and adds performance indexes."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    # Create patients table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS patients (
+            patient_id TEXT PRIMARY KEY,
+            age_months INTEGER NOT NULL,
+            fever_duration_days INTEGER,
+            has_danger_signs BOOLEAN
+        )
+    """)
+    
+    # Create assessments table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS assessments (
+            assessment_id TEXT PRIMARY KEY,
+            patient_id TEXT NOT NULL,
+            risk_level TEXT NOT NULL,
+            needs_referral BOOLEAN NOT NULL,
+            applied_rules TEXT,
+            FOREIGN KEY (patient_id) REFERENCES patients(patient_id)
+        )
+    """)
+    
+    # --- DAY 13: DATABASE INDEX OPTIMIZATION ---
+    cursor.execute("""
+        CREATE INDEX IF NOT EXISTS idx_patient_id ON assessments(patient_id);
+    """)
+    cursor.execute("""
+        CREATE INDEX IF NOT EXISTS idx_risk_level ON assessments(risk_level);
+    """)
+    
+    conn.commit()
+    conn.close()
+
+
+# Automatically initialize database and indexes on module load
+init_db()
+
+
 def save_assessment(patient_data, assessment_result):
     conn = get_connection()
     cursor = conn.cursor()
@@ -37,7 +80,6 @@ def save_assessment(patient_data, assessment_result):
     )
 
     # Insert assessment outcome
-   # Insert assessment outcome
     cursor.execute(
         """
         INSERT OR REPLACE INTO assessments (assessment_id, patient_id, risk_level, needs_referral, applied_rules)
@@ -60,7 +102,6 @@ def save_assessment(patient_data, assessment_result):
         ),
     )
 
-    # (end of save_assessment function above)
     conn.commit()
     conn.close()
 
