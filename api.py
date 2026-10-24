@@ -1,4 +1,5 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Security
+from fastapi.security.api_key import APIKeyHeader
 from pydantic import BaseModel, Field
 from typing import List, Optional
 from engine_pipeline import process_patient_intake, process_batch_intake
@@ -7,9 +8,24 @@ from CLINICAL.validators import PatientValidationError
 
 app = FastAPI(
     title="TRIORA Clinical Assessment API",
-    description="RESTful API for pediatric clinical intake and risk evaluation engine with Pydantic validation.",
-    version="1.2.0",
+    description="RESTful API for pediatric clinical intake and risk evaluation engine with security & auth.",
+    version="1.4.0",
 )
+
+# --- SECURITY CONFIGURATION ---
+API_KEY = "triora-secret-secure-key-2026"
+API_KEY_NAME = "X-API-Key"
+
+api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=True)
+
+def verify_api_key(api_key: str = Security(api_key_header)):
+    """Validates the incoming request API key."""
+    if api_key != API_KEY:
+        raise HTTPException(
+            status_code=403, 
+            detail="Could not validate credentials. Invalid or missing API Key."
+        )
+    return api_key
 
 # --- Pydantic Request Models ---
 class PatientIntakeSchema(BaseModel):
@@ -21,7 +37,6 @@ class PatientIntakeSchema(BaseModel):
 class BatchIntakeSchema(BaseModel):
     patients: List[PatientIntakeSchema]
 
-# Default clinical rules configuration
 DEFAULT_RULES = {
     "rules": [
         {
@@ -39,12 +54,9 @@ DEFAULT_RULES = {
     ]
 }
 
-
 @app.post("/api/v1/assess", summary="Process Single Patient Intake")
-def assess_patient(patient: PatientIntakeSchema):
-    """Evaluates a single patient record using Pydantic validated data and persists to SQLite."""
+def assess_patient(patient: PatientIntakeSchema, api_key: str = Security(verify_api_key)):
     try:
-        # Convert Pydantic model to standard dictionary for the engine pipeline
         result = process_patient_intake(patient.dict(), DEFAULT_RULES)
         return {"status": "success", "assessment": result}
     except PatientValidationError as e:
@@ -52,12 +64,9 @@ def assess_patient(patient: PatientIntakeSchema):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
 @app.post("/api/v1/assess/batch", summary="Process Batch Patient Intake")
-def assess_batch(payload: BatchIntakeSchema):
-    """Processes a batch of patient records atomically within a transaction."""
+def assess_batch(payload: BatchIntakeSchema, api_key: str = Security(verify_api_key)):
     try:
-        # Convert list of Pydantic models to dictionaries
         patients_list = [p.dict() for p in payload.patients]
         results = process_batch_intake(patients_list, DEFAULT_RULES)
         return {"status": "success", "processed_count": len(results), "results": results}
@@ -66,15 +75,11 @@ def assess_batch(payload: BatchIntakeSchema):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
 @app.get("/api/v1/patients/{patient_id}/history", summary="Get Patient History")
-def patient_history(patient_id: str):
-    """Retrieves all past assessment records for a given patient ID."""
+def patient_history(patient_id: str, api_key: str = Security(verify_api_key)):
     history = get_patient_history(patient_id)
     return {"patient_id": patient_id, "history": history}
 
-
 @app.get("/api/v1/summary", summary="Get Clinical Metrics Summary")
-def clinical_summary():
-    """Returns aggregate metrics including total patients and risk breakdowns."""
+def clinical_summary(api_key: str = Security(verify_api_key)):
     return get_clinical_summary()
